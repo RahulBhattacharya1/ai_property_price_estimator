@@ -3,11 +3,9 @@ import pandas as pd
 import numpy as np
 import joblib
 from pathlib import Path
-import sys, types
+import sys
 
-st.set_page_config(page_title="Egypt Property Price Estimator", layout="centered")
-
-# ---- SHIMS (names must match what your notebook used) -----------------------
+# --- shims for any FunctionTransformer helpers you used in Colab (safe no-ops) ---
 def text_fill_1d(s):
     import pandas as _pd
     if isinstance(s, _pd.DataFrame):
@@ -17,23 +15,25 @@ def text_fill_1d(s):
 def _to_dense(X):
     return X.toarray() if hasattr(X, "toarray") else X
 
-# Sometimes you named the densifier 'densify'
 densify = _to_dense
 
-# If you had a helper to build OneHotEncoder, provide a benign stub
-def make_ohe(*args, **kwargs):
-    try:
-        from sklearn.preprocessing import OneHotEncoder
-        # try modern arg set
-        return OneHotEncoder(handle_unknown="ignore", sparse_output=False, **{k:v for k,v in kwargs.items() if k!="sparse"})
-    except TypeError:
-        return OneHotEncoder(handle_unknown="ignore", sparse=False)
+# Let pickles that refer to __main__/ipykernel resolve here
+sys.modules['__main__'] = sys.modules[__name__]
+for alias in ("ipykernel_launcher", "ipykernel", "notebook"):
+    sys.modules[alias] = sys.modules[__name__]
 
-# ---- MODULE ALIASES so pickle can resolve notebook-defined symbols ----------
-# Make this file stand in for common Colab/ipykernel module names
-this_mod = sys.modules[__name__]
-for alias in ("__main__", "ipykernel_launcher", "ipykernel", "colabhelpers", "notebook"):
-    sys.modules[alias] = this_mod
+# --- NEW: monkey-patch sklearn to provide the missing internal class -----------
+try:
+    from sklearn.compose import _column_transformer as _ct_mod
+    if not hasattr(_ct_mod, "_RemainderColsList"):
+        class _RemainderColsList(list):
+            pass
+        _ct_mod._RemainderColsList = _RemainderColsList
+except Exception:
+    # If sklearn import fails, we’ll see it when loading the model anyway
+    pass
+
+st.set_page_config(page_title="Egypt Property Price Estimator", layout="centered")
 
 @st.cache_resource
 def load_model():
@@ -42,24 +42,9 @@ def load_model():
     if not model_path.is_file():
         st.error(f"model.joblib not found at: {model_path}")
         st.stop()
-
-    # Try load, and if pickle complains about a missing attribute, show it
-    try:
-        return joblib.load(model_path)
-    except Exception as e:
-        # Try to extract the missing name/module from the exception text
-        msg = str(e)
-        st.error("Failed to unpickle model.")
-        st.caption("If you trained in Colab with FunctionTransformer helpers, we need to provide shims with the SAME names.")
-        st.code(msg or repr(e))
-        st.info(
-            "If the message shows something like \"Can't get attribute 'XYZ' on module 'abc'\", "
-            "tell me `XYZ` and `abc` and I’ll add an exact shim."
-        )
-        st.stop()
+    return joblib.load(model_path)
 
 model = load_model()
-
 
 st.title("Egypt Real Estate Price Estimator")
 st.caption("Predict price based on property details. Model trained on scraped listings.")
