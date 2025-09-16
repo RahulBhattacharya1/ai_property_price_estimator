@@ -9,7 +9,7 @@ st.set_page_config(page_title="Egypt Property Price Estimator", page_icon="🏠"
 
 @st.cache_resource
 def load_model():
-    model_path = Path(__file__).parent / "artifacts" / "model.joblib"
+    model_path = here / "artifacts" / "model.joblib"
     return joblib.load(model_path)
 
 model = load_model()
