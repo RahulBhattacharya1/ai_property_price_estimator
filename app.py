@@ -87,6 +87,14 @@ if submitted:
 
     try:
         yhat = model.predict(row)[0]
+
+        # Clip unrealistic predictions
+        if np.isnan(yhat) or np.isinf(yhat):
+            yhat = 0.0
+        else:
+            # Cap between 0 and, say, 200 million EGP
+            yhat = float(np.clip(yhat, 0, 2e8))
+
         st.subheader(f"Estimated Price: {yhat:,.0f} EGP")
         st.caption("This estimate is based on historical listings and provided features.")
 
