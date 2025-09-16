@@ -1,18 +1,29 @@
 import streamlit as st
-import pandas as pd
-import numpy as np
 import joblib
-import re
 from pathlib import Path
 
-st.set_page_config(page_title="Egypt Property Price Estimator", page_icon="🏠", layout="centered")
+st.set_page_config(page_title="Egypt Property Price Estimator", layout="centered")
 
 @st.cache_resource
 def load_model():
+    # Make sure 'here' is a Path (not a string)
+    here = Path(__file__).resolve().parent        # <-- repo root now
     model_path = here / "artifacts" / "model.joblib"
+
+    if not model_path.is_file():
+        st.error(f"model.joblib not found at: {model_path}")
+        st.write("Current working directory:", str(Path.cwd()))
+        try:
+            files = "\n".join(str(p) for p in (here / "artifacts").glob("*"))
+            st.code(files or "(artifacts/ is empty)")
+        except Exception:
+            pass
+        st.stop()
+
     return joblib.load(model_path)
 
 model = load_model()
+
 
 st.title("Egypt Real Estate Price Estimator")
 st.caption("Predict price based on property details. Model trained on scraped listings.")
