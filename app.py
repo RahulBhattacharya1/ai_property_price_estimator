@@ -1,25 +1,38 @@
 import streamlit as st
+import pandas as pd
+import numpy as np
 import joblib
 from pathlib import Path
+import sys
 
 st.set_page_config(page_title="Egypt Property Price Estimator", layout="centered")
 
+# ---- Shim functions for unpickling (must match names used when training) ----
+def text_fill_1d(s):
+    # Colab helper used inside a FunctionTransformer
+    # Accepts Series or single-column DataFrame; returns 1D Series with NaNs filled.
+    import pandas as _pd
+    if isinstance(s, _pd.DataFrame):
+        s = s.squeeze(axis=1)
+    return s.fillna("")
+
+def _to_dense(X):
+    # Colab densifier used inside a FunctionTransformer
+    return X.toarray() if hasattr(X, "toarray") else X
+
+# Some versions named the densifier itself 'densify'
+densify = _to_dense  # alias, harmless if not used
+
+# Make this module resolvable as __main__ for pickles saved from a notebook
+sys.modules['__main__'] = sys.modules[__name__]
+
 @st.cache_resource
 def load_model():
-    # Make sure 'here' is a Path (not a string)
-    here = Path(__file__).resolve().parent        # <-- repo root now
+    here = Path(__file__).resolve().parent
     model_path = here / "artifacts" / "model.joblib"
-
     if not model_path.is_file():
         st.error(f"model.joblib not found at: {model_path}")
-        st.write("Current working directory:", str(Path.cwd()))
-        try:
-            files = "\n".join(str(p) for p in (here / "artifacts").glob("*"))
-            st.code(files or "(artifacts/ is empty)")
-        except Exception:
-            pass
         st.stop()
-
     return joblib.load(model_path)
 
 model = load_model()
