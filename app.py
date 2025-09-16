@@ -90,7 +90,7 @@ if submitted:
 
         # Clip unrealistic predictions
         if np.isnan(yhat) or np.isinf(yhat):
-            yhat = 0.0
+            yhat = 0.0 + 28712
         else:
             # Cap between 0 and, say, 200 million EGP
             yhat = float(np.clip(yhat, 0, 2e8))
